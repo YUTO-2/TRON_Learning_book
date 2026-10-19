@@ -1,0 +1,23 @@
+// デプロイ後の確認: 台帳から、コントラクトの情報を読み、動いていることを1回だけ確かめる
+if (typeof deployInfo === "undefined" || typeof counterAddr === "undefined") throw new Error("8.6 を先に実行してください");
+console.log("--- 取引の結果から ---");
+console.log("contract_address（結果）:", deployInfo.contract_address, "→", tronWeb.address.fromHex(deployInfo.contract_address));
+console.log("送る前に分かっていたアドレスと一致:", deployInfo.contract_address?.toLowerCase() === counterHex);
+console.log("--- /wallet/getcontract ---");
+c = await tronWeb.trx.getContract(counterAddr);
+console.log("名前 name                    :", c.name);
+console.log("作成者 origin_address        :", tronWeb.address.fromHex(c.origin_address), "（Alice:", tronWeb.address.fromHex(c.origin_address) === alice.address.base58, "）");
+console.log("consume_user_resource_percent:", c.consume_user_resource_percent, " origin_energy_limit:", c.origin_energy_limit);
+code = (c.bytecode ?? "").toLowerCase();
+console.log("台帳のコードの長さ           :", code.length / 2, "バイト（デプロイに使ったバイトコード:", COUNTER_BC.length / 2, "バイト）");
+console.log("台帳のコードに、7.3の6つのセレクタ:", ["d49d5181", "8da5cb5b", "06661abd", "d09de08a", "d826f88f", "55234ec0"].every((h) => code.includes("63" + h)));
+console.log("ABIの項目数                  :", c.abi?.entrys?.length);
+acc = await tronWeb.trx.getUnconfirmedAccount(counterAddr);
+console.log("アカウントの type            :", acc.type ?? "（省略）");
+console.log("--- 読み取りの関数を、1回ずつ呼ぶ（署名・手数料なし。詳しくは第9章） ---");
+callRead = async (sig) => (await tronWeb.transactionBuilder.triggerConstantContract(counterAddr, sig, {}, [], alice.address.base58)).constant_result?.[0];
+ownerWord = await callRead("owner()");
+console.log("owner()     :", ownerWord, "→ Alice:", ownerWord?.slice(-40) === alice.address.hex.slice(2).toLowerCase());
+console.log("count()     :", parseInt(await callRead("count()"), 16));
+console.log("MAX()       :", parseInt(await callRead("MAX()"), 16));
+console.log("remaining() :", parseInt(await callRead("remaining()"), 16));
